@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Outfit Weather</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="weather-card">
+        <header class="topbar">
+          <div>
+            <p class="label">Current weather</p>
+            <h1 id="city-name">Detroit, MI</h1>
+          </div>
+          <div class="unit-toggle" aria-label="Temperature unit toggle">
+            <button class="unit-btn active" data-unit="c">°C</button>
+            <button class="unit-btn" data-unit="f">°F</button>
+          </div>
+        </header>
+
+        <div class="search-box">
+          <label class="sr-only" for="city-search">Search city</label>
+          <input id="city-search" type="text" value="Detroit" placeholder="Enter city name" />
+          <button id="search-btn" type="button">Search</button>
+        </div>
+
+        <div class="temp-row">
+          <div id="temperature" class="temperature">--°</div>
+          <div class="condition-wrap">
+            <div id="condition-icon" class="condition-icon" aria-hidden="true">☀️</div>
+            <div id="condition" class="condition">Loading...</div>
+          </div>
+        </div>
+
+        <div class="outfit-box">
+          <p class="label">Outfit suggestion</p>
+          <h2 id="outfit">Checking the forecast...</h2>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
