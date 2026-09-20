@@ -37,7 +37,16 @@
         <div class="outfit-box">
           <p class="label">Outfit suggestion</p>
           <h2 id="outfit">Checking the forecast...</h2>
+          <div id="outfit-gallery" class="outfit-gallery" aria-live="polite"></div>
         </div>
+
+        <section class="forecast-panel" aria-labelledby="week-forecast-heading">
+          <div class="section-header">
+            <p class="label">This week</p>
+            <h3 id="week-forecast-heading">Weather for the rest of the week</h3>
+          </div>
+          <div id="week-forecast" class="week-forecast" aria-live="polite"></div>
+        </section>
       </section>
     </main>
 

@@ -30,10 +30,40 @@ const weatherCodeMap = {
   99: { label: 'Severe hail storm', icon: '⛈️' }
 };
 
+const outfitItems = {
+  hot: [
+    { name: 'Tank top', icon: '👕' },
+    { name: 'Shorts', icon: '🩳' },
+    { name: 'Sunglasses', icon: '🕶️' }
+  ],
+  warm: [
+    { name: 'Breathable tee', icon: '👚' },
+    { name: 'Light shorts', icon: '🩱' },
+    { name: 'Light rain jacket', icon: '🧥' }
+  ],
+  mild: [
+    { name: 'Long-sleeve tee', icon: '👕' },
+    { name: 'Denim jeans', icon: '👖' },
+    { name: 'Light layer', icon: '🧣' }
+  ],
+  cool: [
+    { name: 'Sweater', icon: '🧶' },
+    { name: 'Jeans', icon: '👖' },
+    { name: 'Light coat', icon: '🧥' }
+  ],
+  cold: [
+    { name: 'Winter coat', icon: '🧥' },
+    { name: 'Scarf', icon: '🧣' },
+    { name: 'Boots', icon: '🥾' }
+  ]
+};
+
 const temperatureEl = document.getElementById('temperature');
 const conditionEl = document.getElementById('condition');
 const conditionIconEl = document.getElementById('condition-icon');
 const outfitEl = document.getElementById('outfit');
+const outfitGalleryEl = document.getElementById('outfit-gallery');
+const weekForecastEl = document.getElementById('week-forecast');
 const cityNameEl = document.getElementById('city-name');
 const searchInput = document.getElementById('city-search');
 const searchButton = document.getElementById('search-btn');
@@ -84,6 +114,40 @@ function getOutfitSuggestion(tempC, code) {
   return 'Freezing conditions: wear a heavy winter coat, thermal layers, hat, gloves, and insulated boots.';
 }
 
+function getOutfitItemsForWeather(tempC, code) {
+  const rainy = ['rain', 'drizzle', 'showers', 'storm', 'fog', 'cloudy'].some((word) =>
+    getWeatherDetails(code).label.toLowerCase().includes(word)
+  );
+
+  if (tempC >= 30) return outfitItems.hot;
+  if (tempC >= 25) return rainy ? outfitItems.warm : outfitItems.hot;
+  if (tempC >= 18) return rainy ? outfitItems.mild : outfitItems.mild;
+  if (tempC >= 10) return outfitItems.cool;
+  if (tempC >= 0) return outfitItems.cold;
+  return outfitItems.cold;
+}
+
+function renderOutfitGallery() {
+  if (currentTempC === null) {
+    outfitGalleryEl.innerHTML = '';
+    return;
+  }
+
+  const items = getOutfitItemsForWeather(currentTempC, currentWeatherCode);
+  outfitGalleryEl.innerHTML = items
+    .map(
+      (item) => `
+        <article class="clothing-card" aria-label="${item.name}">
+          <div class="clothing-icon" aria-hidden="true">${item.icon}</div>
+          <div class="clothing-caption">
+            <span>${item.name}</span>
+          </div>
+        </article>
+      `
+    )
+    .join('');
+}
+
 function renderWeather() {
   if (currentTempC === null) return;
 
@@ -95,6 +159,40 @@ function renderWeather() {
   conditionEl.textContent = weather.label;
   conditionIconEl.textContent = weather.icon;
   outfitEl.textContent = getOutfitSuggestion(currentTempC, currentWeatherCode);
+  renderOutfitGallery();
+}
+
+function formatDayLabel(dateString) {
+  return new Date(dateString).toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function renderWeeklyForecast(daily) {
+  if (!daily || !daily.time || !daily.time.length) {
+    weekForecastEl.innerHTML = '<div class="forecast-empty">Forecast unavailable for this city.</div>';
+    return;
+  }
+
+  weekForecastEl.innerHTML = daily.time
+    .slice(0, 7)
+    .map((day, index) => {
+      const code = daily.weather_code[index];
+      const high = daily.temperature_2m_max[index];
+      const low = daily.temperature_2m_min[index];
+      const weather = getWeatherDetails(code);
+      const displayHigh = activeUnit === 'c' ? high : toFahrenheit(high);
+      const displayLow = activeUnit === 'c' ? low : toFahrenheit(low);
+      const unitLabel = activeUnit === 'c' ? '°C' : '°F';
+
+      return `
+        <article class="forecast-card">
+          <p class="forecast-day">${formatDayLabel(day)}</p>
+          <div class="forecast-icon" aria-hidden="true">${weather.icon}</div>
+          <p class="forecast-condition">${weather.label}</p>
+          <p class="forecast-temp">${Math.round(displayHigh)}${unitLabel} / ${Math.round(displayLow)}${unitLabel}</p>
+        </article>
+      `;
+    })
+    .join('');
 }
 
 function updateUnit(unit) {
@@ -103,6 +201,10 @@ function updateUnit(unit) {
     button.classList.toggle('active', button.dataset.unit === unit);
   });
   renderWeather();
+
+  if (weekForecastEl.dataset.lastForecast) {
+    renderWeeklyForecast(JSON.parse(weekForecastEl.dataset.lastForecast));
+  }
 }
 
 function setCityName(name) {
@@ -137,7 +239,7 @@ async function fetchWeatherForCity(cityName) {
 
     setCityName(locationName);
 
-    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,weather_code&timezone=auto`;
+    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`;
     const response = await fetch(forecastUrl);
 
     if (!response.ok) {
@@ -148,11 +250,15 @@ async function fetchWeatherForCity(cityName) {
     currentTempC = data.current.temperature_2m;
     currentWeatherCode = data.current.weather_code;
     renderWeather();
+    renderWeeklyForecast(data.daily);
+    weekForecastEl.dataset.lastForecast = JSON.stringify(data.daily);
   } catch (error) {
     temperatureEl.textContent = '--°';
     conditionEl.textContent = 'Weather unavailable';
     conditionIconEl.textContent = '⚠️';
     outfitEl.textContent = 'Check back later for your outfit suggestion.';
+    outfitGalleryEl.innerHTML = '';
+    weekForecastEl.innerHTML = '<div class="forecast-empty">Forecast is unavailable right now.</div>';
     console.error(error);
   }
 }
