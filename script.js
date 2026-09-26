@@ -1,4 +1,5 @@
 const defaultCity = 'Detroit';
+const favoriteCityKey = 'weatherApp.favoriteCity';
 const weatherCodeMap = {
   0: { label: 'Clear sky', icon: '☀️' },
   1: { label: 'Mainly clear', icon: '🌤️' },
@@ -67,11 +68,63 @@ const weekForecastEl = document.getElementById('week-forecast');
 const cityNameEl = document.getElementById('city-name');
 const searchInput = document.getElementById('city-search');
 const searchButton = document.getElementById('search-btn');
+const favoriteButton = document.getElementById('favorite-btn');
+const favoriteModal = document.getElementById('favorite-modal');
+const favoriteForm = document.getElementById('favorite-form');
+const favoriteCityInput = document.getElementById('favorite-city-input');
+const favoriteCancelButton = document.getElementById('favorite-cancel');
 const unitButtons = document.querySelectorAll('.unit-btn');
 
 let currentTempC = null;
 let currentWeatherCode = null;
 let activeUnit = 'c';
+
+function getFavoriteCity() {
+  try {
+    return localStorage.getItem(favoriteCityKey) || '';
+  } catch (error) {
+    console.error('Unable to read saved favorite city:', error);
+    return '';
+  }
+}
+
+function saveFavoriteCity(cityName) {
+  const trimmedCity = cityName.trim();
+
+  if (!trimmedCity) {
+    return false;
+  }
+
+  try {
+    localStorage.setItem(favoriteCityKey, trimmedCity);
+    return true;
+  } catch (error) {
+    console.error('Unable to save favorite city:', error);
+    return false;
+  }
+}
+
+function showFavoritePrompt(city = defaultCity) {
+  favoriteCityInput.value = city;
+  favoriteModal.classList.remove('hidden');
+  favoriteCityInput.focus();
+}
+
+function hideFavoritePrompt() {
+  favoriteModal.classList.add('hidden');
+}
+
+function initializeFavoriteCity() {
+  const savedFavorite = getFavoriteCity();
+
+  if (savedFavorite) {
+    searchInput.value = savedFavorite;
+    fetchWeatherForCity(savedFavorite);
+    return;
+  }
+
+  showFavoritePrompt(defaultCity);
+}
 
 function toFahrenheit(celsius) {
   return (celsius * 9) / 5 + 32;
@@ -271,11 +324,46 @@ searchButton.addEventListener('click', () => {
   fetchWeatherForCity(searchInput.value);
 });
 
+favoriteButton.addEventListener('click', () => {
+  const cityName = searchInput.value.trim();
+
+  if (!cityName) {
+    window.alert('Please enter a city before saving it as your favorite.');
+    return;
+  }
+
+  if (saveFavoriteCity(cityName)) {
+    window.alert(`Saved ${cityName} as your favorite city.`);
+  }
+});
+
+favoriteForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const cityName = favoriteCityInput.value.trim();
+
+  if (!cityName) {
+    favoriteCityInput.focus();
+    return;
+  }
+
+  saveFavoriteCity(cityName);
+  searchInput.value = cityName;
+  hideFavoritePrompt();
+  fetchWeatherForCity(cityName);
+});
+
+favoriteCancelButton.addEventListener('click', () => {
+  const fallbackCity = defaultCity;
+  saveFavoriteCity(fallbackCity);
+  searchInput.value = fallbackCity;
+  hideFavoritePrompt();
+  fetchWeatherForCity(fallbackCity);
+});
+
 searchInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     fetchWeatherForCity(searchInput.value);
   }
 });
 
-searchInput.value = defaultCity;
-fetchWeatherForCity(defaultCity);
+initializeFavoriteCity();

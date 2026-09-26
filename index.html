@@ -7,6 +7,21 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="favorite-modal" class="favorite-modal hidden" aria-live="polite">
+      <div class="favorite-modal-card">
+        <p class="label">Favorite city</p>
+        <h2>Which city do you want to check first?</h2>
+        <form id="favorite-form">
+          <label class="sr-only" for="favorite-city-input">Favorite city</label>
+          <input id="favorite-city-input" type="text" value="Detroit" placeholder="Enter your favorite city" />
+          <div class="favorite-modal-actions">
+            <button type="submit" class="primary-btn">Save city</button>
+            <button type="button" id="favorite-cancel" class="secondary-btn">Use Detroit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <main class="app">
       <section class="weather-card">
         <header class="topbar">
@@ -24,6 +39,7 @@
           <label class="sr-only" for="city-search">Search city</label>
           <input id="city-search" type="text" value="Detroit" placeholder="Enter city name" />
           <button id="search-btn" type="button">Search</button>
+          <button id="favorite-btn" type="button" class="favorite-btn">Save Favorite</button>
         </div>
 
         <div class="temp-row">
