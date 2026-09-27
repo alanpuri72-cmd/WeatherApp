@@ -1,5 +1,9 @@
 const defaultCity = 'Detroit';
 const favoriteCityKey = 'weatherApp.favoriteCity';
+const wardrobeStorageKey = 'weatherApp.wardrobeItems';
+const validWeatherTags = ['hot', 'warm', 'mild', 'cool', 'cold', 'rainy', 'sunny'];
+const hasDocument = typeof document !== 'undefined';
+
 const weatherCodeMap = {
   0: { label: 'Clear sky', icon: '☀️' },
   1: { label: 'Mainly clear', icon: '🌤️' },
@@ -59,21 +63,21 @@ const outfitItems = {
   ]
 };
 
-const temperatureEl = document.getElementById('temperature');
-const conditionEl = document.getElementById('condition');
-const conditionIconEl = document.getElementById('condition-icon');
-const outfitEl = document.getElementById('outfit');
-const outfitGalleryEl = document.getElementById('outfit-gallery');
-const weekForecastEl = document.getElementById('week-forecast');
-const cityNameEl = document.getElementById('city-name');
-const searchInput = document.getElementById('city-search');
-const searchButton = document.getElementById('search-btn');
-const favoriteButton = document.getElementById('favorite-btn');
-const favoriteModal = document.getElementById('favorite-modal');
-const favoriteForm = document.getElementById('favorite-form');
-const favoriteCityInput = document.getElementById('favorite-city-input');
-const favoriteCancelButton = document.getElementById('favorite-cancel');
-const unitButtons = document.querySelectorAll('.unit-btn');
+const temperatureEl = hasDocument ? document.getElementById('temperature') : null;
+const conditionEl = hasDocument ? document.getElementById('condition') : null;
+const conditionIconEl = hasDocument ? document.getElementById('condition-icon') : null;
+const outfitEl = hasDocument ? document.getElementById('outfit') : null;
+const outfitGalleryEl = hasDocument ? document.getElementById('outfit-gallery') : null;
+const weekForecastEl = hasDocument ? document.getElementById('week-forecast') : null;
+const cityNameEl = hasDocument ? document.getElementById('city-name') : null;
+const searchInput = hasDocument ? document.getElementById('city-search') : null;
+const searchButton = hasDocument ? document.getElementById('search-btn') : null;
+const favoriteButton = hasDocument ? document.getElementById('favorite-btn') : null;
+const favoriteModal = hasDocument ? document.getElementById('favorite-modal') : null;
+const favoriteForm = hasDocument ? document.getElementById('favorite-form') : null;
+const favoriteCityInput = hasDocument ? document.getElementById('favorite-city-input') : null;
+const favoriteCancelButton = hasDocument ? document.getElementById('favorite-cancel') : null;
+const unitButtons = hasDocument ? document.querySelectorAll('.unit-btn') : [];
 
 let currentTempC = null;
 let currentWeatherCode = null;
@@ -105,16 +109,20 @@ function saveFavoriteCity(cityName) {
 }
 
 function showFavoritePrompt(city = defaultCity) {
+  if (!favoriteCityInput || !favoriteModal) return;
   favoriteCityInput.value = city;
   favoriteModal.classList.remove('hidden');
   favoriteCityInput.focus();
 }
 
 function hideFavoritePrompt() {
+  if (!favoriteModal) return;
   favoriteModal.classList.add('hidden');
 }
 
 function initializeFavoriteCity() {
+  if (!searchInput) return;
+
   const savedFavorite = getFavoriteCity();
 
   if (savedFavorite) {
@@ -134,11 +142,88 @@ function getWeatherDetails(code) {
   return weatherCodeMap[code] || { label: 'Weather update', icon: '🌤️' };
 }
 
+function getWeatherCategory(tempC) {
+  if (tempC >= 30) return 'hot';
+  if (tempC >= 25) return 'warm';
+  if (tempC >= 18) return 'mild';
+  if (tempC >= 10) return 'cool';
+  return 'cold';
+}
+
+function isRainyWeather(weatherLabel = '') {
+  const label = String(weatherLabel).toLowerCase();
+  return ['rain', 'drizzle', 'showers', 'storm', 'fog', 'cloudy', 'mist'].some((word) => label.includes(word));
+}
+
+function inferWardrobeIcon(itemName, tags = []) {
+  const lowerName = String(itemName || '').toLowerCase();
+
+  if (tags.includes('cold') || lowerName.includes('coat') || lowerName.includes('jacket')) return '🧥';
+  if (tags.includes('rainy') || lowerName.includes('rain') || lowerName.includes('hoodie')) return '🌧️';
+  if (tags.includes('hot') || lowerName.includes('short') || lowerName.includes('tank') || lowerName.includes('tee')) return '👕';
+  if (tags.includes('cool') || lowerName.includes('sweater') || lowerName.includes('sweat')) return '🧶';
+  if (lowerName.includes('pants') || lowerName.includes('jean') || lowerName.includes('trouser')) return '👖';
+  if (lowerName.includes('scarf')) return '🧣';
+  if (lowerName.includes('boot')) return '🥾';
+  return '🧥';
+}
+
+function normalizeWardrobeItem(item) {
+  if (!item || typeof item !== 'object') return null;
+
+  const trimmedName = String(item.name || '').trim();
+  const weatherTags = Array.isArray(item.weatherTags)
+    ? item.weatherTags.filter((tag) => validWeatherTags.includes(tag))
+    : [];
+
+  if (!trimmedName || !weatherTags.length) {
+    return null;
+  }
+
+  const uniqueTags = [...new Set(weatherTags)];
+
+  return {
+    id: item.id || `wardrobe-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: trimmedName,
+    weatherTags: uniqueTags,
+    icon: item.icon || inferWardrobeIcon(trimmedName, uniqueTags)
+  };
+}
+
+function getStoredWardrobe() {
+  if (!hasDocument || !window.localStorage) {
+    return [];
+  }
+
+  try {
+    const storedItems = localStorage.getItem(wardrobeStorageKey);
+    if (!storedItems) return [];
+
+    const parsedItems = JSON.parse(storedItems);
+    if (!Array.isArray(parsedItems)) return [];
+
+    return parsedItems.map(normalizeWardrobeItem).filter(Boolean);
+  } catch (error) {
+    console.error('Unable to load wardrobe items:', error);
+    return [];
+  }
+}
+
+function saveWardrobe(items) {
+  if (!hasDocument || !window.localStorage) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(wardrobeStorageKey, JSON.stringify(items));
+  } catch (error) {
+    console.error('Unable to save wardrobe items:', error);
+  }
+}
+
 function getOutfitSuggestion(tempC, code) {
   const weather = getWeatherDetails(code);
-  const rainy = ['rain', 'drizzle', 'showers', 'storm', 'fog', 'cloudy'].some((word) =>
-    weather.label.toLowerCase().includes(word)
-  );
+  const rainy = isRainyWeather(weather.label);
 
   if (tempC >= 30) {
     return 'Very hot out: wear a tank top, shorts, sunglasses, and a water bottle.';
@@ -168,32 +253,76 @@ function getOutfitSuggestion(tempC, code) {
 }
 
 function getOutfitItemsForWeather(tempC, code) {
-  const rainy = ['rain', 'drizzle', 'showers', 'storm', 'fog', 'cloudy'].some((word) =>
-    getWeatherDetails(code).label.toLowerCase().includes(word)
-  );
+  const rainy = isRainyWeather(getWeatherDetails(code).label);
 
   if (tempC >= 30) return outfitItems.hot;
   if (tempC >= 25) return rainy ? outfitItems.warm : outfitItems.hot;
-  if (tempC >= 18) return rainy ? outfitItems.mild : outfitItems.mild;
+  if (tempC >= 18) return outfitItems.mild;
   if (tempC >= 10) return outfitItems.cool;
   if (tempC >= 0) return outfitItems.cold;
   return outfitItems.cold;
 }
 
+function getWardrobeSuggestions(items, tempC, weatherLabel = '') {
+  if (typeof tempC !== 'number' || Number.isNaN(tempC)) {
+    return [];
+  }
+
+  const normalized = (Array.isArray(items) ? items : [])
+    .map(normalizeWardrobeItem)
+    .filter(Boolean);
+
+  if (!normalized.length) {
+    return [];
+  }
+
+  const targetCategory = getWeatherCategory(tempC);
+  const rainy = isRainyWeather(weatherLabel);
+
+  const matches = normalized.filter((item) => {
+    const tags = item.weatherTags || [];
+    const matchesCategory = tags.includes(targetCategory);
+    const matchesRain = rainy && tags.includes('rainy');
+    return matchesCategory || matchesRain;
+  });
+
+  return matches.length ? matches : normalized;
+}
+
 function renderOutfitGallery() {
-  if (currentTempC === null) {
-    outfitGalleryEl.innerHTML = '';
+  if (!outfitGalleryEl || currentTempC === null) {
     return;
   }
 
-  const items = getOutfitItemsForWeather(currentTempC, currentWeatherCode);
+  const weatherLabel = currentWeatherCode !== null ? getWeatherDetails(currentWeatherCode).label : '';
+  const wardrobeMatches = getWardrobeSuggestions(getStoredWardrobe(), currentTempC, weatherLabel).map((item) => ({
+    ...item,
+    owned: true
+  }));
+  const defaultItems = getOutfitItemsForWeather(currentTempC, currentWeatherCode).map((item) => ({
+    ...item,
+    owned: false
+  }));
+
+  const seenNames = new Set();
+  const items = [...wardrobeMatches, ...defaultItems].filter((item) => {
+    const key = String(item.name || '').trim().toLowerCase();
+    if (!key || seenNames.has(key)) {
+      return false;
+    }
+
+    seenNames.add(key);
+    return true;
+  });
+
   outfitGalleryEl.innerHTML = items
     .map(
       (item) => `
         <article class="clothing-card" aria-label="${item.name}">
-          <div class="clothing-icon" aria-hidden="true">${item.icon}</div>
+          <div class="clothing-icon" aria-hidden="true">${item.icon || inferWardrobeIcon(item.name, item.weatherTags || [])}</div>
           <div class="clothing-caption">
             <span>${item.name}</span>
+            ${item.owned ? '<span class="owned-label">Owned</span>' : ''}
           </div>
         </article>
       `
@@ -202,7 +331,9 @@ function renderOutfitGallery() {
 }
 
 function renderWeather() {
-  if (currentTempC === null) return;
+  if (currentTempC === null || !temperatureEl || !conditionEl || !conditionIconEl || !outfitEl) {
+    return;
+  }
 
   const tempDisplay = activeUnit === 'c' ? currentTempC : toFahrenheit(currentTempC);
   const unitLabel = activeUnit === 'c' ? '°C' : '°F';
@@ -220,6 +351,8 @@ function formatDayLabel(dateString) {
 }
 
 function renderWeeklyForecast(daily) {
+  if (!weekForecastEl) return;
+
   if (!daily || !daily.time || !daily.time.length) {
     weekForecastEl.innerHTML = '<div class="forecast-empty">Forecast unavailable for this city.</div>';
     return;
@@ -255,16 +388,20 @@ function updateUnit(unit) {
   });
   renderWeather();
 
-  if (weekForecastEl.dataset.lastForecast) {
+  if (weekForecastEl && weekForecastEl.dataset.lastForecast) {
     renderWeeklyForecast(JSON.parse(weekForecastEl.dataset.lastForecast));
   }
 }
 
 function setCityName(name) {
-  cityNameEl.textContent = name;
+  if (cityNameEl) {
+    cityNameEl.textContent = name;
+  }
 }
 
 async function fetchWeatherForCity(cityName) {
+  if (!outfitEl || !temperatureEl || !conditionEl || !conditionIconEl || !weekForecastEl) return;
+
   const cityQuery = cityName.trim();
   if (!cityQuery) {
     outfitEl.textContent = 'Please enter a city name to get an outfit suggestion.';
@@ -310,60 +447,158 @@ async function fetchWeatherForCity(cityName) {
     conditionEl.textContent = 'Weather unavailable';
     conditionIconEl.textContent = '⚠️';
     outfitEl.textContent = 'Check back later for your outfit suggestion.';
-    outfitGalleryEl.innerHTML = '';
+    if (outfitGalleryEl) outfitGalleryEl.innerHTML = '';
     weekForecastEl.innerHTML = '<div class="forecast-empty">Forecast is unavailable right now.</div>';
     console.error(error);
   }
 }
 
-unitButtons.forEach((button) => {
-  button.addEventListener('click', () => updateUnit(button.dataset.unit));
-});
+function initializeWardrobePage() {
+  const wardrobeForm = document.getElementById('wardrobe-form');
+  const wardrobeList = document.getElementById('wardrobe-list');
+  if (!wardrobeForm || !wardrobeList) return;
 
-searchButton.addEventListener('click', () => {
-  fetchWeatherForCity(searchInput.value);
-});
+  const tagInputs = wardrobeForm.querySelectorAll('input[name="weather-tag"]');
 
-favoriteButton.addEventListener('click', () => {
-  const cityName = searchInput.value.trim();
+  function renderWardrobeList() {
+    const items = getStoredWardrobe();
 
-  if (!cityName) {
-    window.alert('Please enter a city before saving it as your favorite.');
-    return;
+    if (!items.length) {
+      wardrobeList.innerHTML = '<div class="empty-state">No items yet. Add a shirt, coat, or other piece of clothing to start building your outfit ideas.</div>';
+      return;
+    }
+
+    wardrobeList.innerHTML = items
+      .map(
+        (item) => `
+          <div class="wardrobe-item" data-id="${item.id}">
+            <div class="wardrobe-item-main">
+              <div class="wardrobe-item-icon" aria-hidden="true">${item.icon}</div>
+              <div>
+                <h3>${item.name}</h3>
+                <div class="tag-list">
+                  ${item.weatherTags
+                    .map((tag) => `<span class="weather-tag ${tag}">${tag}</span>`)
+                    .join('')}
+                </div>
+              </div>
+            </div>
+            <button type="button" class="delete-item" data-item-id="${item.id}">Remove</button>
+          </div>
+        `
+      )
+      .join('');
   }
 
-  if (saveFavoriteCity(cityName)) {
-    window.alert(`Saved ${cityName} as your favorite city.`);
-  }
-});
+  wardrobeForm.addEventListener('submit', (event) => {
+    event.preventDefault();
 
-favoriteForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const cityName = favoriteCityInput.value.trim();
+    const clothingNameInput = document.getElementById('wardrobe-name');
+    const clothingName = clothingNameInput ? clothingNameInput.value.trim() : '';
+    const selectedTags = Array.from(tagInputs)
+      .filter((input) => input.checked)
+      .map((input) => input.value);
 
-  if (!cityName) {
-    favoriteCityInput.focus();
-    return;
-  }
+    if (!clothingName) {
+      clothingNameInput.focus();
+      return;
+    }
 
-  saveFavoriteCity(cityName);
-  searchInput.value = cityName;
-  hideFavoritePrompt();
-  fetchWeatherForCity(cityName);
-});
+    if (!selectedTags.length) {
+      window.alert('Please choose at least one weather type for this item.');
+      return;
+    }
 
-favoriteCancelButton.addEventListener('click', () => {
-  const fallbackCity = defaultCity;
-  saveFavoriteCity(fallbackCity);
-  searchInput.value = fallbackCity;
-  hideFavoritePrompt();
-  fetchWeatherForCity(fallbackCity);
-});
+    const items = getStoredWardrobe();
+    const newItem = normalizeWardrobeItem({
+      id: `wardrobe-${Date.now()}`,
+      name: clothingName,
+      weatherTags: selectedTags,
+      icon: inferWardrobeIcon(clothingName, selectedTags)
+    });
 
-searchInput.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') {
+    if (!newItem) {
+      window.alert('Unable to add that clothing item.');
+      return;
+    }
+
+    items.unshift(newItem);
+    saveWardrobe(items);
+    wardrobeForm.reset();
+    renderWardrobeList();
+  });
+
+  wardrobeList.addEventListener('click', (event) => {
+    const removeButton = event.target.closest('.delete-item');
+    if (!removeButton) return;
+
+    const itemId = removeButton.dataset.itemId;
+    const items = getStoredWardrobe().filter((item) => item.id !== itemId);
+    saveWardrobe(items);
+    renderWardrobeList();
+  });
+
+  renderWardrobeList();
+}
+
+if (hasDocument && searchButton && favoriteButton && favoriteForm && favoriteCancelButton && searchInput) {
+  unitButtons.forEach((button) => {
+    button.addEventListener('click', () => updateUnit(button.dataset.unit));
+  });
+
+  searchButton.addEventListener('click', () => {
     fetchWeatherForCity(searchInput.value);
-  }
-});
+  });
 
-initializeFavoriteCity();
+  favoriteButton.addEventListener('click', () => {
+    const cityName = searchInput.value.trim();
+
+    if (!cityName) {
+      window.alert('Please enter a city before saving it as your favorite.');
+      return;
+    }
+
+    if (saveFavoriteCity(cityName)) {
+      window.alert(`Saved ${cityName} as your favorite city.`);
+    }
+  });
+
+  favoriteForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const cityName = favoriteCityInput.value.trim();
+
+    if (!cityName) {
+      favoriteCityInput.focus();
+      return;
+    }
+
+    saveFavoriteCity(cityName);
+    searchInput.value = cityName;
+    hideFavoritePrompt();
+    fetchWeatherForCity(cityName);
+  });
+
+  favoriteCancelButton.addEventListener('click', () => {
+    const fallbackCity = defaultCity;
+    saveFavoriteCity(fallbackCity);
+    searchInput.value = fallbackCity;
+    hideFavoritePrompt();
+    fetchWeatherForCity(fallbackCity);
+  });
+
+  searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      fetchWeatherForCity(searchInput.value);
+    }
+  });
+
+  initializeFavoriteCity();
+}
+
+if (hasDocument && document.getElementById('wardrobe-form')) {
+  initializeWardrobePage();
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { getWardrobeSuggestions };
+}

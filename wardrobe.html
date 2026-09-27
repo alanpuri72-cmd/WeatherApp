@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wardrobe Planner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app wardrobe-page">
+      <section class="weather-card wardrobe-card">
+        <header class="topbar wardrobe-topbar">
+          <div>
+            <p class="label">My closet</p>
+            <h1>Wardrobe planner</h1>
+          </div>
+          <a href="index.html" class="secondary-btn small-btn">Back to weather</a>
+        </header>
+
+        <form id="wardrobe-form" class="wardrobe-form">
+          <div class="field-group">
+            <label for="wardrobe-name">Clothing item</label>
+            <input id="wardrobe-name" name="wardrobe-name" type="text" placeholder="e.g. Rain jacket" />
+          </div>
+
+          <fieldset class="tag-group">
+            <legend>Best for weather</legend>
+            <div class="tag-options">
+              <label><input type="checkbox" name="weather-tag" value="hot" /> Hot</label>
+              <label><input type="checkbox" name="weather-tag" value="warm" /> Warm</label>
+              <label><input type="checkbox" name="weather-tag" value="mild" /> Mild</label>
+              <label><input type="checkbox" name="weather-tag" value="cool" /> Cool</label>
+              <label><input type="checkbox" name="weather-tag" value="cold" /> Cold</label>
+              <label><input type="checkbox" name="weather-tag" value="rainy" /> Rainy</label>
+            </div>
+          </fieldset>
+
+          <button class="primary-btn submit-btn" type="submit">Add to wardrobe</button>
+        </form>
+
+        <section class="wardrobe-list-panel">
+          <div class="section-header wardrobe-header">
+            <p class="label">Saved items</p>
+            <h3>My clothing</h3>
+          </div>
+          <div id="wardrobe-list" class="wardrobe-list" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
